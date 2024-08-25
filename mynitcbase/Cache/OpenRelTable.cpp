@@ -26,116 +26,93 @@ AttrCacheEntry *createAttrCacheEntryList(int size)
     return head;
 }
 OpenRelTableMetaInfo OpenRelTable::tableMetaInfo[MAX_OPEN];
-OpenRelTable::OpenRelTable()
-{
-
-    // initialize relCache and attrCache with nullptr
-    for (int i = 0; i < MAX_OPEN; ++i)
-    {
-        RelCacheTable::relCache[i] = nullptr;
-        AttrCacheTable::attrCache[i] = nullptr;
+OpenRelTable::OpenRelTable() {
+    // Initialize each entry in the relation and attribute cache tables to nullptr 
+    // and mark all entries in the tableMetaInfo array as free.
+    for (int i = 0; i < MAX_OPEN; i++) {
+        RelCacheTable::relCache[i] = nullptr;  // Initialize relation cache entry to nullptr
+        AttrCacheTable::attrCache[i] = nullptr; // Initialize attribute cache entry to nullptr
+        OpenRelTable::tableMetaInfo[i].free = true; // Mark tableMetaInfo entry as free
     }
 
-    /************ Setting up Relation Cache entries ************/
-    // (we need to populate relation cache with entries for the relation catalog
-    //  and attribute catalog.)
-
-    // setting up the variables
+    // Initialize the relation catalog block and temporary storage for relation catalog records
     RecBuffer relCatBlock(RELCAT_BLOCK);
     Attribute relCatRecord[RELCAT_NO_ATTRS];
-    RelCacheEntry *relCacheEntry = nullptr;
+    
+    // Loop through each entry in the relation catalog (RELCAT_RELID to ATTRCAT_RELID)
+    // and populate the relation cache with these entries.
+    for (int i = RELCAT_RELID; i <= ATTRCAT_RELID; i++) {
+        relCatBlock.getRecord(relCatRecord, i); // Fetch the i-th record from the relation catalog
 
-    for (int relId = RELCAT_RELID; relId <= ATTRCAT_RELID + 1; relId++)
-    {
-        relCatBlock.getRecord(relCatRecord, relId);
+        struct RelCacheEntry relCacheEntry; // Temporary storage for relation cache entry
+        RelCacheTable::recordToRelCatEntry(relCatRecord, &relCacheEntry.relCatEntry); // Convert record to cache entry
+        relCacheEntry.recId.block = RELCAT_BLOCK; // Assign block number to recId
+        relCacheEntry.recId.slot = i; // Assign slot number to recId
 
-        relCacheEntry = (RelCacheEntry *)malloc(sizeof(RelCacheEntry));
-        RelCacheTable::recordToRelCatEntry(relCatRecord, &(relCacheEntry->relCatEntry));
-        relCacheEntry->recId.block = RELCAT_BLOCK;
-        relCacheEntry->recId.slot = relId;
-
-        RelCacheTable::relCache[relId] = relCacheEntry;
+        // Allocate memory for the cache entry and store it in the relation cache
+        RelCacheTable::relCache[i] = (struct RelCacheEntry*) malloc(sizeof(RelCacheEntry));
+        *(RelCacheTable::relCache[i]) = relCacheEntry; // Copy the constructed entry to the cache
+        tableMetaInfo[i].free = false; // Mark this tableMetaInfo entry as occupied
+        memcpy(tableMetaInfo[i].relName, relCacheEntry.relCatEntry.relName, ATTR_SIZE); // Store the relation name
     }
 
-    /************ Setting up Attribute cache entries ************/
-    // (we need to populate attribute cache with entries for the relation catalog
-    //  and attribute catalog.)
-
-    // setting up the variables
+    // Initialize the attribute catalog block and temporary storage for attribute catalog records
     RecBuffer attrCatBlock(ATTRCAT_BLOCK);
     Attribute attrCatRecord[ATTRCAT_NO_ATTRS];
-    AttrCacheEntry *attrCacheEntry = nullptr, *head = nullptr;
+    
+    // Create a linked list for storing attribute cache entries for the relation catalog attributes
+    auto relCatListHead = createAttrCacheEntryList(RELCAT_NO_ATTRS);
+    auto attrCacheEntry = relCatListHead;
 
-    for (int relId = RELCAT_RELID, recordId = 0; relId <= ATTRCAT_RELID + 1; relId++)
-    {
-        int numberOfAttributes = RelCacheTable::relCache[relId]->relCatEntry.numAttrs;
-        head = createAttrCacheEntryList(numberOfAttributes);
-        attrCacheEntry = head;
+    // Populate the attribute cache with entries corresponding to relation catalog attributes
+    for (int i = 0; i < RELCAT_NO_ATTRS; i++) {
+        attrCatBlock.getRecord(attrCatRecord, i); // Fetch the i-th record from the attribute catalog
 
-        while (numberOfAttributes--)
-        {
-            attrCatBlock.getRecord(attrCatRecord, recordId);
-
-            AttrCacheTable::recordToAttrCatEntry(
-                attrCatRecord,
-                &(attrCacheEntry->attrCatEntry));
-            attrCacheEntry->recId.slot = recordId++;
-            attrCacheEntry->recId.block = ATTRCAT_BLOCK;
-
-            attrCacheEntry = attrCacheEntry->next;
-        }
-
-        AttrCacheTable::attrCache[relId] = head;
+        // Convert record to attribute cache entry and store in the linked list
+        AttrCacheTable::recordToAttrCatEntry(attrCatRecord, &(attrCacheEntry->attrCatEntry));
+        (attrCacheEntry->recId).block = ATTRCAT_BLOCK; // Assign block number to recId
+        (attrCacheEntry->recId).slot = i; // Assign slot number to recId
+        
+        attrCacheEntry = attrCacheEntry->next; // Move to the next entry in the list
     }
+    AttrCacheTable::attrCache[RELCAT_RELID] = relCatListHead; // Store the head of the list in the attribute cache
 
-    RecBuffer relCatBuffer(RELCAT_BLOCK);
-    Attribute relCatRecord1[RELCAT_NO_ATTRS];
+    // Create a linked list for storing attribute cache entries for the attribute catalog attributes
+    auto attrCatListHead = createAttrCacheEntryList(ATTRCAT_NO_ATTRS);
+    attrCacheEntry = attrCatListHead;
+    
+    // Populate the attribute cache with entries corresponding to attribute catalog attributes
+    for (int i = RELCAT_NO_ATTRS; i < RELCAT_NO_ATTRS + ATTRCAT_NO_ATTRS; i++) {
+        attrCatBlock.getRecord(attrCatRecord, i); // Fetch the i-th record from the attribute catalog
 
-    HeadInfo relCatHeader;
-    relCatBuffer.getHeader(&relCatHeader);
+        // Convert record to attribute cache entry and store in the linked list
+        AttrCacheTable::recordToAttrCatEntry(attrCatRecord, &(attrCacheEntry->attrCatEntry));
+        (attrCacheEntry->recId).block = ATTRCAT_BLOCK; // Assign block number to recId
+        (attrCacheEntry->recId).slot = i; // Assign slot number to recId
 
-    int relationIndex = -1;
-    // char* relationName = "Students";
-
-    for (int index = 2; index < relCatHeader.numEntries + 4; index++)
-    {
-        relCatBuffer.getRecord(relCatRecord, index);
-
-        if (strcmp(relCatRecord1[RELCAT_REL_NAME_INDEX].sVal,
-                   "Students") == 0)
-        { // matching the name of the record we want
-            relationIndex = index;
-        }
+        attrCacheEntry = attrCacheEntry->next; // Move to the next entry in the list
     }
-
-    /************ Setting up tableMetaInfo entries ************/
-
-    // in the tableMetaInfo array
-    //   set free = false for RELCAT_RELID and ATTRCAT_RELID
-    //   set relname for RELCAT_RELID and ATTRCAT_RELID
-    for(int i = 0; i < MAX_OPEN; i++) {
-        tableMetaInfo[i].free = true;
-    }
-    tableMetaInfo[RELCAT_RELID].free = false;
-    strcpy(tableMetaInfo[RELCAT_RELID].relName, RELCAT_RELNAME);
-
-    tableMetaInfo[ATTRCAT_RELID].free = false;
-    strcpy(tableMetaInfo[ATTRCAT_RELID].relName, ATTRCAT_RELNAME);
+    AttrCacheTable::attrCache[ATTRCAT_RELID] = attrCatListHead; // Store the head of the list in the attribute cache
 }
 
 OpenRelTable::~OpenRelTable() {
 
-  // close all open relations (from rel-id = 2 onwards. Why?)
-  for (int i = 2; i < MAX_OPEN; ++i) {
-    if (!tableMetaInfo[i].free) {
-      OpenRelTable::closeRel(i); // we will implement this function later
+    // Close all open relations, starting from index 2 (assuming index 0 and 1 are reserved)
+    for (int i = 2; i < MAX_OPEN; i++) {
+        if (!tableMetaInfo[i].free)
+            OpenRelTable::closeRel(i); // Close the relation at index i if it is open
     }
-  }
 
-  // free the memory allocated for rel-id 0 and 1 in the caches
-    free(RelCacheTable::relCache[RELCAT_RELID]);
-    free(RelCacheTable::relCache[ATTRCAT_RELID]);
+    // Free all allocated memory and reset the relation and attribute caches
+    for (int i = 0; i < MAX_OPEN; i++) {
+        free(RelCacheTable::relCache[i]); // Free memory allocated for relation cache entry
+        clearList(AttrCacheTable::attrCache[i]); // Free memory for the linked list in attribute cache
+
+        RelCacheTable::relCache[i] = nullptr; // Reset relation cache entry to nullptr
+        AttrCacheTable::attrCache[i] = nullptr; // Reset attribute cache entry to nullptr
+    }
 }
+
 
 /* This function will open a relation having name `relName`.
 Since we are currently only working with the relation and attribute catalog, we
