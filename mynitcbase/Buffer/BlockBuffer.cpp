@@ -220,3 +220,166 @@ int RecBuffer::setRecord(union Attribute *rec, int slotNum) {
     // Return SUCCESS to indicate that the operation was successful
     return SUCCESS;
 }
+
+//Stage 7
+int BlockBuffer::setHeader(struct HeadInfo *head){
+
+    unsigned char *bufferPtr;
+    // get the starting address of the buffer containing the block using
+    // loadBlockAndGetBufferPtr(&bufferPtr).
+    int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+
+    // if loadBlockAndGetBufferPtr(&bufferPtr) != SUCCESS
+        // return the value returned by the call.
+    if(ret != SUCCESS)
+        return ret;
+
+    // cast bufferPtr to type HeadInfo*
+    struct HeadInfo *bufferHeader = (struct HeadInfo *)bufferPtr;
+
+    // copy the fields of the HeadInfo pointed to by head (except reserved) to
+    // the header of the block (pointed to by bufferHeader)
+    //(hint: bufferHeader->numSlots = head->numSlots )
+    bufferHeader->numSlots = head->numSlots;
+    bufferHeader->numEntries = head->numEntries;
+    bufferHeader->numAttrs = head->numAttrs;
+    bufferHeader->lblock = head->lblock;
+    bufferHeader->rblock = head->rblock;
+
+    // update dirty bit by calling StaticBuffer::setDirtyBit()
+    // if setDirtyBit() failed, return the error code
+    
+
+    // return SUCCESS;
+    return StaticBuffer::setDirtyBit(this->blockNum);
+}
+
+int BlockBuffer::setBlockType(int blockType) {
+    unsigned char* bufferPtr;
+
+    // Get the starting address of the buffer containing the block
+    // using loadBlockAndGetBufferPtr(&bufferPtr).
+    int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+
+    // If loading the block fails, return the error code
+    if (ret != SUCCESS)
+        return ret;
+
+    // Store the input block type in the first 4 bytes of the buffer.
+    // (Hint: Cast bufferPtr to int32_t* and then assign it)
+    *((int32_t*)bufferPtr) = blockType;
+
+    // Update the StaticBuffer::blockAllocMap entry corresponding to the
+    // object's block number to `blockType`.
+    StaticBuffer::blockAllocMap[this->blockNum] = blockType;
+
+    // Update the dirty bit by calling StaticBuffer::setDirtyBit()
+    // If setDirtyBit() failed, return the returned value from the call
+    return StaticBuffer::setDirtyBit(this->blockNum);
+}
+
+int BlockBuffer::getFreeBlock(int blockType) {
+    int freeBlock = -1;
+
+    // Iterate through the StaticBuffer::blockAllocMap to find the block number of a free block on the disk.
+    for (int i = 0; i < DISK_BLOCKS; i++) {
+        if (StaticBuffer::blockAllocMap[i] == UNUSED_BLK) {  // Check if the block is unused
+            freeBlock = i;  // Assign the block number of the free block
+            break;  // Exit the loop as soon as a free block is found
+        }
+    }
+
+    // If no block is free, return E_DISKFULL.
+    if (freeBlock == -1)
+        return E_DISKFULL;
+
+    // Set the object's blockNum to the block number of the free block.
+    this->blockNum = freeBlock;
+
+    // Find a free buffer using StaticBuffer::getFreeBuffer().
+    int freeBuffer = StaticBuffer::getFreeBuffer(freeBlock);
+
+    // Initialize the header of the block by passing a struct HeadInfo with default values
+    // to the setHeader() function.
+    HeadInfo header;
+    header.pblock = -1;   // Previous block pointer is set to -1 (indicating no previous block)
+    header.lblock = -1;   // Left block pointer is set to -1 (indicating no left block)
+    header.rblock = -1;   // Right block pointer is set to -1 (indicating no right block)
+    header.numEntries = 0; // Number of entries in the block is set to 0
+    header.numAttrs = 0;   // Number of attributes in the block is set to 0
+    header.numSlots = 0;   // Number of slots in the block is set to 0
+
+    // Set the header of the block
+    this->setHeader(&header);
+
+    // Update the block type of the block to the input block type using setBlockType().
+    this->setBlockType(blockType);
+
+    // Return the block number of the free block.
+    return freeBlock;
+}
+
+BlockBuffer::BlockBuffer(char blockType) {
+    int BlockTypeNumber;
+
+    // Determine the block type number based on the input character
+    if (blockType == 'R')
+        BlockTypeNumber = REC;           // Set BlockTypeNumber to REC for 'R' (Record block)
+    else if (blockType == 'I')
+        BlockTypeNumber = IND_INTERNAL;  // Set BlockTypeNumber to IND_INTERNAL for 'I' (Internal Index block)
+    else if (blockType == 'L')
+        BlockTypeNumber = IND_LEAF;      // Set BlockTypeNumber to IND_LEAF for 'L' (Leaf Index block)
+    else 
+        BlockTypeNumber = UNUSED_BLK;    // Set BlockTypeNumber to UNUSED_BLK for any other value
+
+    // Allocate a block on the disk and a buffer in memory to hold the new block of
+    // the given type using getFreeBlock function and get the return error codes if any.
+    int blockNum = getFreeBlock(BlockTypeNumber);
+
+    // Set the blockNum field of the object to the allocated block number
+    // if the method returned a valid block number
+    this->blockNum = blockNum;
+
+    // If the block number is invalid (less than 0 or greater than or equal to DISK_BLOCKS),
+    // the constructor exits without further action.
+    if (blockNum < 0 || blockNum >= DISK_BLOCKS)
+        return;
+}
+
+
+RecBuffer::RecBuffer() : BlockBuffer::BlockBuffer('R') {}
+// call parent non-default constructor with 'R' denoting record block.
+
+int RecBuffer::setSlotMap(unsigned char* slotMap) {
+    unsigned char* bufferPtr;
+
+    // Get the starting address of the buffer containing the block using loadBlockAndGetBufferPtr(&bufferPtr).
+    int ret = loadBlockAndGetBufferPtr(&bufferPtr);
+
+    // If loadBlockAndGetBufferPtr(&bufferPtr) fails, return the value returned by the call.
+    if (ret != SUCCESS)
+        return ret;
+
+    // Get the header of the block using the getHeader() function.
+    struct HeadInfo head;
+    getHeader(&head);
+
+    // Retrieve the number of slots in the block from the header.
+    int slotCount = head.numSlots;
+
+    // The slot map starts at bufferPtr + HEADER_SIZE. Copy the contents of the argument `slotMap` 
+    // to the buffer, replacing the existing slot map. The size of the slot map is `slotCount`.
+    unsigned char* slotMapInBuffer = bufferPtr + HEADER_SIZE;
+    memcpy(slotMapInBuffer, slotMap, slotCount);
+
+    // Update the dirty bit using StaticBuffer::setDirtyBit. If setDirtyBit fails, return the error code.
+    return StaticBuffer::setDirtyBit(this->blockNum);
+}
+
+int BlockBuffer::getBlockNum(){
+
+    //return corresponding block number.
+    return this->blockNum;
+}
+
+
