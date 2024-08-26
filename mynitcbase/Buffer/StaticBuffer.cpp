@@ -1,13 +1,47 @@
 #include "StaticBuffer.h"
-
+#include<cstring>
 
 // the declarations for this class can be found at "StaticBuffer.h"
 
 unsigned char StaticBuffer::blocks[BUFFER_CAPACITY][BLOCK_SIZE];
 struct BufferMetaInfo StaticBuffer::metainfo[BUFFER_CAPACITY];
 
+// Stage 6
+
+// StaticBuffer::StaticBuffer() {
+//     for (int i = 0; i < BUFFER_CAPACITY; i++) {
+//         metainfo[i].free = true;
+//         metainfo[i].dirty = false;
+//         metainfo[i].timeStamp = -1;
+//         metainfo[i].blockNum = -1;
+//     }
+// }
+
+// StaticBuffer::~StaticBuffer() {
+//     for (int i = 0; i < BUFFER_CAPACITY; i++) {
+//         if (!metainfo[i].free && metainfo[i].dirty) 
+//             Disk::writeBlock(StaticBuffer::blocks[i], metainfo[i].blockNum);
+//     }
+// }
+
+//Stage 7
+
+// declare the blockAllocMap array
+unsigned char StaticBuffer::blockAllocMap[DISK_BLOCKS];
 
 StaticBuffer::StaticBuffer() {
+  // copy blockAllocMap blocks from disk to buffer (using readblock() of disk)
+  // blocks 0 to 3
+    for (int i = 0; i < 4; i++) {
+        unsigned char buffer[BLOCK_SIZE];
+        Disk::readBlock(buffer, i);
+        memcpy(blockAllocMap+i*BLOCK_SIZE, buffer, BLOCK_SIZE);
+    }
+
+  /* initialise metainfo of all the buffer blocks with
+     dirty:false, free:true, timestamp:-1 and blockNum:-1
+     (you did this already)
+  */
     for (int i = 0; i < BUFFER_CAPACITY; i++) {
         metainfo[i].free = true;
         metainfo[i].dirty = false;
@@ -17,11 +51,25 @@ StaticBuffer::StaticBuffer() {
 }
 
 StaticBuffer::~StaticBuffer() {
+  // copy blockAllocMap blocks from buffer to disk(using writeblock() of disk)
+
+  /*iterate through all the buffer blocks,
+    write back blocks with metainfo as free:false,dirty:true
+    (you did this already)
+  */
+    for (int i = 0; i < 4; i++) {
+        unsigned char buffer[BLOCK_SIZE];
+        memcpy(buffer, blockAllocMap + i*BLOCK_SIZE, BLOCK_SIZE);
+        Disk::writeBlock(buffer, i);
+    }
+
+
     for (int i = 0; i < BUFFER_CAPACITY; i++) {
         if (!metainfo[i].free && metainfo[i].dirty) 
             Disk::writeBlock(StaticBuffer::blocks[i], metainfo[i].blockNum);
     }
 }
+
 
 int StaticBuffer::getFreeBuffer(int blockNum) {
     // Check if the block number is within valid bounds
