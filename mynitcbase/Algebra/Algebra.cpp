@@ -29,7 +29,7 @@ bool isNumber(char* str) {
 int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr[ATTR_SIZE], int op, char strVal[ATTR_SIZE]) {
     // Get the relation ID of the source relation
     int srcRelId = OpenRelTable::getRelId(srcRel);
-    printf("srcRelId: %d\n", srcRelId);
+    // printf("srcRelId: %d\n", srcRelId);
     // Return error code if the relation is not open
     if (srcRelId == E_RELNOTOPEN) 
     {
@@ -85,7 +85,7 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
         // printf("op: %d\n", op);
 
         RecId searchRes = BlockAccess::linearSearch(srcRelId, attr, attrVal, op);
-        printf("searchRes.block: %d\n", searchRes.block);
+        // printf("searchRes.block: %d\n", searchRes.block);
 
         // Check if a valid record is found
         if (searchRes.block != -1 && searchRes.slot != -1) {
@@ -167,7 +167,7 @@ int Algebra::insert(char relName[ATTR_SIZE], int nAttrs, char record[][ATTR_SIZE
             strcpy(recordValues[i].sVal, record[i]);
         } 
     }
-    printf("Inserting record into relation %s\n", relName);
+    // printf("Inserting record into relation %s\n", relName);
 
     // Insert the record by calling BlockAccess::insert() function
     // Let retVal denote the return value of the insert call

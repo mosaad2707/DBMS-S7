@@ -82,7 +82,7 @@ void print_relations_attributes()
     relCatBuffer.getRecord(relCatRecord, i);
 
     // Print the name of the relation from the catalog
-    printf("Relation: %s\n", relCatRecord[RELCAT_REL_NAME_INDEX].sVal);
+    // printf("Relation: %s\n", relCatRecord[RELCAT_REL_NAME_INDEX].sVal);
 
     // Initialize the attribute catalog block number to start reading
     int attrCatBlockNumber = ATTRCAT_BLOCK;

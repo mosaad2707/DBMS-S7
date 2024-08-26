@@ -239,14 +239,14 @@ int BlockAccess::insert(int relId, Attribute* record) {
     // (Use RelCacheTable::getRelCatEntry() of Cache Layer)
     RelCatEntry relCatBuf;
     int ret = RelCacheTable::getRelCatEntry(relId, &relCatBuf);
-    printf("ret inside insert: %d\n", ret);
+    // printf("ret inside insert: %d\n", ret);
 
     if (ret != SUCCESS)
         return ret;
-    printf("relCatBuf.relName: %s\n", relCatBuf.relName);
+    // printf("relCatBuf.relName: %s\n", relCatBuf.relName);
     // Get the first record block of the relation from the rel-cat entry
     int blockNum = relCatBuf.firstBlk;
-    printf("blockNum: %d\n", blockNum);
+    // printf("blockNum: %d\n", blockNum);
 
     // rec_id will be used to store where the new record will be inserted
     RecId recId = {-1, -1};
@@ -277,7 +277,7 @@ int BlockAccess::insert(int relId, Attribute* record) {
         // Search for a free slot in the block 'blockNum' and store its rec-id in rec_id
         int freeSlot = -1;
         for (int i = 0; i < numSlots; i++) {
-            printf("slotMap[%d]: %d\n", i, slotMap[i]);
+            // printf("slotMap[%d]: %d\n", i, slotMap[i]);
             if (slotMap[i] == SLOT_UNOCCUPIED) {
                 freeSlot = i;
                 break; 
@@ -298,8 +298,8 @@ int BlockAccess::insert(int relId, Attribute* record) {
         prevBlockNum = blockNum;
         blockNum = currentHeader.rblock;
     }
-    printf("recId.block: %d\n", recId.block);
-    printf("recId.slot: %d\n", recId.slot);
+    // printf("recId.block: %d\n", recId.block);
+    // printf("recId.slot: %d\n", recId.slot);
 
     // If no free slot is found in existing record blocks (rec_id = {-1, -1})
     if (recId.block == -1 || recId.slot == -1) {
@@ -319,8 +319,8 @@ int BlockAccess::insert(int relId, Attribute* record) {
         // Assign rec_id.block = new block number and rec_id.slot = 0
         recId.block = newBlockNum;
         recId.slot = 0;
-        printf("newBlockNum: %d\n", newBlockNum);
-        printf("recId.block: %d\n", recId.block);
+        // printf("newBlockNum: %d\n", newBlockNum);
+        // printf("recId.block: %d\n", recId.block);
 
 
         /*
