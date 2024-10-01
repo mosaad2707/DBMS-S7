@@ -1,0 +1,6 @@
+INSERT INTO Locations VALUES (elhc, 300);
+INSERT INTO Locations VALUES (nlhc, 300);
+INSERT INTO Locations VALUES (eclc, 500);
+INSERT INTO Locations VALUES (pits, 150);
+INSERT INTO Locations VALUES (oat, 950);
+INSERT INTO Locations VALUES (audi, 1000);
