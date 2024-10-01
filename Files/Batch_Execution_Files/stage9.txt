@@ -1,0 +1,8 @@
+CREATE TABLE QuizMarks(rollNo STR, name STR, cgpa NUM, quizMarks NUM, location STR);
+OPEN TABLE QuizMarks;
+INSERT INTO QuizMarks VALUES FROM quiz.csv
+SELECT * FROM QuizMarks INTO Kerala WHERE location=Kerala;
+OPEN TABLE Kerala;
+SELECT * FROM Kerala INTO CGPA WHERE cgpa>8;
+OPEN TABLE CGPA;
+SELECT rollNo,name FROM CGPA INTO KeralaResult WHERE quizMarks>85;
