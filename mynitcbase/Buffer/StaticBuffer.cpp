@@ -28,7 +28,7 @@ struct BufferMetaInfo StaticBuffer::metainfo[BUFFER_CAPACITY];
 
 // declare the blockAllocMap array
 unsigned char StaticBuffer::blockAllocMap[DISK_BLOCKS];
-
+int StaticBuffer::comp = 0;
 StaticBuffer::StaticBuffer() {
   // copy blockAllocMap blocks from disk to buffer (using readblock() of disk)
   // blocks 0 to 3
@@ -160,4 +160,15 @@ int StaticBuffer::setDirtyBit(int blockNum){
 
     // return SUCCESS
     return SUCCESS;
+}
+
+int StaticBuffer::getStaticBlockType(int blockNum){
+    // Check if blockNum is valid (non zero and less than number of disk blocks)
+    if(blockNum < 0 || blockNum >= DISK_BLOCKS)
+        return E_OUTOFBOUND; // Return E_OUTOFBOUND if blockNum is invalid
+
+    // Access the entry in block allocation map corresponding to the blockNum argument
+    unsigned char blockType = blockAllocMap[blockNum];
+    // and return the block type after type casting to integer.
+    return (int)blockType;
 }

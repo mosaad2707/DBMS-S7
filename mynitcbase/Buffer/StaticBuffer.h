@@ -30,6 +30,7 @@ class StaticBuffer {
   static int setDirtyBit(int blockNum);
   StaticBuffer();
   ~StaticBuffer();
+  static int comp;
 };
 
 #endif  // NITCBASE_STATICBUFFER_H

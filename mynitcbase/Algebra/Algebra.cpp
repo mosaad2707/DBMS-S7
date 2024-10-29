@@ -253,7 +253,10 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
     RelCacheTable::resetSearchIndex(srcRelId);
 
     // Reset the search index in the attribute cache for the select condition attribute
-    // AttrCacheTable::resetSearchIndex(srcRelId, attr);
+    AttrCacheTable::resetSearchIndex(srcRelId, attr);
+
+    // modifications to print number of comparisons
+    StaticBuffer::comp = 0;
 
     // Declare a record array to store the current record being processed
     Attribute record[src_nAttrs];
@@ -270,7 +273,8 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
             return ret;
         }
     }
-
+    //modifications to print number of comparisons
+    printf("Number of comparisons done: %d\n", StaticBuffer::comp);
     // Close the target relation
     OpenRelTable::closeRel(targetRelId);
 
