@@ -109,7 +109,7 @@ int BlockAccess::renameRelation(char oldName[ATTR_SIZE], char newName[ATTR_SIZE]
     RecId recId = BlockAccess::linearSearch(RELCAT_RELID, (char*)RELCAT_ATTR_RELNAME, newRelationName, EQ);
 
     // If a relation with name newName already exists (result of linearSearch is not {-1, -1}), return E_RELEXIST
-    if (recId.block != -1 || recId.slot != -1)
+    if (recId.block != -1 && recId.slot != -1)
         return E_RELEXIST;
 
     // Reset the search index of the relation catalog using RelCacheTable::resetSearchIndex()
@@ -394,8 +394,24 @@ int BlockAccess::insert(int relId, Attribute* record) {
     relCatBuf.numRecs++;
     RelCacheTable::setRelCatEntry(relId, &relCatBuf);
 
-    // Return SUCCESS
-    return SUCCESS;
+    int flag = SUCCESS;
+    // Iterate over all the attributes of the relation
+    // (let attrOffset be iterator ranging from 0 to numOfAttributes-1)
+    for (int i = 0; i < numAttrs; i++) {
+        // Get the attribute catalog entry for the attribute using AttrCacheTable::getAttrCatEntry()
+        AttrCatEntry attrCatBuf;
+        AttrCacheTable::getAttrCatEntry(relId, i, &attrCatBuf);
+        // printf("attrCatBuf.attrName: %s\n", attrCatBuf.attrName);
+        int rootBlock = attrCatBuf.rootBlock;
+        if (rootBlock != -1) {
+            int ret = BPlusTree::bPlusInsert(relId, attrCatBuf.attrName, record[i], recId);
+            if (ret == E_DISKFULL)
+                flag = E_INDEX_BLOCKS_RELEASED;
+        }
+    }
+
+    return flag;
+
 }
 
 /*
@@ -594,10 +610,9 @@ int BlockAccess::deleteRelation(char relName[ATTR_SIZE]) {
 		/*
         // (the following part is only relevant once indexing has been implemented)
         // if index exists for the attribute (rootBlock != -1), call bplus destroy
-        if (rootBlock != -1) {
-            // delete the bplus tree rooted at rootBlock using BPlusTree::bPlusDestroy()
-        }
-		*/
+        */
+        if (rootBlock != -1)
+            BPlusTree::bPlusDestroy(rootBlock);
     }
 
     /*** Delete the entry corresponding to the relation from relation catalog ***/

@@ -172,3 +172,68 @@ int AttrCacheTable::resetSearchIndex(int relId,int attrOffset) {
   return AttrCacheTable::setSearchIndex(relId, attrOffset, &index);
   // return the value returned by setSearchIndex
 }
+
+int AttrCacheTable::setAttrCatEntry(int relId, char attrName[ATTR_SIZE], AttrCatEntry *attrCatBuf) {
+  //relId is outside the range [0, MAX_OPEN-1]
+  if(relId < 0 || relId >= MAX_OPEN) {
+    return E_OUTOFBOUND;
+  }
+  //entry corresponding to the relId in the Attribute Cache Table is free
+  if(attrCache[relId] == nullptr) {
+    return E_RELNOTOPEN;
+  }
+
+  for(AttrCacheEntry* entry = attrCache[relId]; entry != nullptr; entry = entry->next) {
+    // the attrName/offset field of the AttrCatEntry
+    // is equal to the input attrName/attrOffset
+    if(strcmp(entry->attrCatEntry.attrName, attrName) == 0) {
+      // copy the attrCatBuf to the corresponding Attribute Catalog entry in
+      // the Attribute Cache Table.
+      entry->attrCatEntry = *attrCatBuf;
+      // set the dirty flag of the corresponding Attribute Cache entry in the
+      // Attribute Cache Table.
+      entry->dirty = true;
+      return SUCCESS;
+    }
+  }
+  return E_ATTRNOTEXIST;
+}
+
+int AttrCacheTable::setAttrCatEntry(int relId, int attrOffset, AttrCatEntry *attrCatBuf) {
+  //relId is outside the range [0, MAX_OPEN-1]
+  if(relId < 0 || relId >= MAX_OPEN) {
+    return E_OUTOFBOUND;
+  }
+
+  if(attrCache[relId] == nullptr) {
+    return E_RELNOTOPEN;
+  }
+
+  for(AttrCacheEntry* entry = attrCache[relId]; entry != nullptr; entry = entry->next)
+  {
+    if(entry->attrCatEntry.offset == attrOffset)
+    {
+      // copy the attrCatBuf to the corresponding Attribute Catalog entry in
+      // the Attribute Cache Table.
+
+      entry->attrCatEntry = *attrCatBuf;
+      // set the dirty flag of the corresponding Attribute Cache entry in the
+      // Attribute Cache Table.
+      entry->dirty = true;
+
+      return SUCCESS;
+    }
+  }
+  return E_ATTRNOTEXIST;
+}
+
+void AttrCacheTable::attrCatEntryToRecord(AttrCatEntry *attrCatEntry, union Attribute record[ATTRCAT_NO_ATTRS]) {
+  // copy the fields of the attrCatEntry to the record
+    strcpy(record[ATTRCAT_REL_NAME_INDEX].sVal, attrCatEntry->relName);
+    // copy the rest of the fields in the attrCacheEntry struct to the record
+    strcpy(record[ATTRCAT_ATTR_NAME_INDEX].sVal, attrCatEntry->attrName);
+    record[ATTRCAT_ATTR_TYPE_INDEX].nVal = (double) attrCatEntry->attrType;
+    record[ATTRCAT_PRIMARY_FLAG_INDEX].nVal = (double) attrCatEntry->primaryFlag;
+    record[ATTRCAT_ROOT_BLOCK_INDEX].nVal = (double) attrCatEntry->rootBlock;
+    record[ATTRCAT_OFFSET_INDEX].nVal = (double) attrCatEntry->offset;
+}
