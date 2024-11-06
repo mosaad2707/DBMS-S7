@@ -1,0 +1,25 @@
+echo ----Creating and populating new relation----
+echo ----CREATE TABLE S11_Students(name STR, cgpa NUM);
+OPEN TABLE S11_Students;
+echo -----INSERT INTO S11_Students VAlUES FROM s11students.csv;
+echo --------------------------------------------
+echo
+echo ----Creating an index on the student names----
+CREATE INDEX ON S11_Students.name;
+echo ----------------------------------------------
+echo
+echo ----Inserting records into the relation----
+INSERT INTO S11_Students VALUES(caaarter, 10);
+INSERT INTO S11_Students VALUES(caaara, 5);
+INSERT INTO S11_Students VALUES(caaapi, 8);
+echo -------------------------------------------
+echo
+echo ----Creating an index on the student CGPA----
+CREATE INDEX ON S11_Students.cgpa;
+echo ---------------------------------------------
+echo
+echo ----Inserting more records into the relation----
+INSERT INTO S11_Students VALUES(naveen, 9);
+INSERT INTO S11_Students VALUES(rohith, 9);
+echo ------------------------------------------------
+echo
